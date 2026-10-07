@@ -4,14 +4,17 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import { MathUtils, Vector3 } from 'three';
 import { GALLERY } from '@/lib/constants';
+import { Artwork } from '@/data/artworks';
 
 const pressed = new Set<string>();
 
-export default function Player({ active }: { active: boolean }) {
+export default function Player({ active, artworks, onNearby }: { active: boolean; artworks: Artwork[]; onNearby: (artwork: Artwork | null) => void }) {
   const { camera, gl } = useThree();
   const direction = useRef(new Vector3());
   const forward = useRef(new Vector3());
   const right = useRef(new Vector3());
+  const lastNearby = useRef<string | null>(null);
+  const proximityClock = useRef(0);
 
   useEffect(() => {
     const onDown = (event: KeyboardEvent) => { pressed.add(event.code); };
@@ -63,7 +66,22 @@ export default function Player({ active }: { active: boolean }) {
   }, [active, camera, gl]);
 
   useFrame((_, delta) => {
-    if (!active) return;
+    if (!active) {
+      if (lastNearby.current) { lastNearby.current = null; onNearby(null); }
+      return;
+    }
+    proximityClock.current += delta;
+    if (proximityClock.current > 0.12) {
+      proximityClock.current = 0;
+      const nearest = artworks
+        .map((artwork) => ({ artwork, distance: camera.position.distanceTo(new Vector3(...artwork.position)) }))
+        .filter(({ artwork, distance }) => distance < (artwork.interactionRadius ?? GALLERY.artworkInteractionRadius))
+        .sort((a, b) => a.distance - b.distance)[0]?.artwork ?? null;
+      if (nearest?.id !== lastNearby.current) {
+        lastNearby.current = nearest?.id ?? null;
+        onNearby(nearest);
+      }
+    }
     const f = Number(pressed.has('KeyW') || pressed.has('ArrowUp')) - Number(pressed.has('KeyS') || pressed.has('ArrowDown'));
     const s = Number(pressed.has('KeyD') || pressed.has('ArrowRight')) - Number(pressed.has('KeyA') || pressed.has('ArrowLeft'));
     if (!f && !s) return;
