@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { Artwork } from '@/data/artworks';
 
 export function ArtworkImage({
@@ -31,15 +30,16 @@ export function ArtworkImage({
 
   return (
     <div className={`artwork-image ${className}`}>
-      <Image
-        src={artwork.image}
-        alt={artwork.alt}
-        fill
-        sizes="(max-width: 760px) 100vw, 62vw"
-        priority
-        unoptimized
+      <img
+         src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}${artwork.image}`}
+         alt={artwork.alt}
         onError={() => setFailed(true)}
-        style={{ objectFit: 'contain' }}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain',
+  }}
+
       />
     </div>
   );
