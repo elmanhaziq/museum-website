@@ -18,7 +18,7 @@ function wall(id:string,title:string,medium:string,image:string,alt:string,room:
   const frameThickness=0.055;
   const placement=placeArtworkOnWall(wallId,offsetX,centerY,frameThickness,WALL_OFFSET);
   return {
-    id,title,year:2026,medium,image:`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/artworks/${image}.webp`,imageAspectRatio:ratio,
+    id,title,year:2026,medium,image:`/artworks/${image}.webp`,imageAspectRatio:ratio,
     size:[Number((height*ratio).toFixed(3)),height],frameStyle,frameThickness,showLabel:true,
     alt,room,wallId,offsetX,centerY,wallOffset:WALL_OFFSET,...placement,
     description:`A personal ${medium.toLowerCase()} work from Kasih Arissa’s collection, presented with its original details and mark-making intact.`,
@@ -51,7 +51,7 @@ export const artworks: Artwork[] = [
   wall('poppin-jelly','Poppin Jelly','Watercolor and graphic design','kasih-19-poppin-jelly','Colorful Poppin Jelly dessert café poster with fruit and jelly','kawaii-gallery','kawaii-gallery-entry',1.7,1.45,.735,'white'),
   wall('complete-the-set','Complete the Set','Digital graphic design','kasih-23-complete-the-set','Pink and purple playful typographic poster','kawaii-gallery','kawaii-gallery-end',-.9,1.55,.704,'white'),
   wall('dessert-bowl','Mykōri Dessert Concept','Watercolor and marker on paper','kasih-20-dessert-bowl','Colorful illustrated bowl of shaved ice with berries and jelly','kawaii-gallery','kawaii-gallery-end',.9,1.55,.942,'white'),
-  {id:'mixed-media-fish',title:'Underwater Assemblage',year:2026,medium:'Mixed-media sculpture',image:`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/artworks/kasih-22-fish-sculpture.webp`,imageAspectRatio:.686,size:[1.5,1.8],frameStyle:'canvas',alt:'Colorful handmade fish sculpture assembled from found materials',room:'sculpture-gallery',position:[0,1.3,-44.8],rotation:[0,0,0],description:'A colorful fish assembled from found materials, exhibited as a sculptural centerpiece.',displayType:'sculpture',interactionRadius:3.4},
+  {id:'mixed-media-fish',title:'Underwater Assemblage',year:2026,medium:'Mixed-media sculpture',image:'/artworks/kasih-22-fish-sculpture.webp',imageAspectRatio:.686,size:[1.5,1.8],frameStyle:'canvas',alt:'Colorful handmade fish sculpture assembled from found materials',room:'sculpture-gallery',position:[0,1.3,-44.8],rotation:[0,0,0],description:'A colorful fish assembled from found materials, exhibited as a sculptural centerpiece.',displayType:'sculpture',interactionRadius:3.4},
 ];
 
 validateArtworkPlacement(artworks);

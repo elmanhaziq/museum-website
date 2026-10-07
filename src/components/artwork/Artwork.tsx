@@ -8,7 +8,9 @@ import { Artwork as ArtworkData } from '@/data/artworks';
 import ArtworkFrame from './ArtworkFrame';
 
 function ArtworkTexture({ artwork, imageWidth, imageHeight, depth }: { artwork: ArtworkData; imageWidth: number; imageHeight: number; depth: number }) {
-  const texture = useTexture(artwork.image);
+  const texture = useTexture(
+  `${process.env.NEXT_PUBLIC_BASE_PATH || ''}${artwork.image}`
+);
   const { gl } = useThree();
   useEffect(() => {
     texture.colorSpace = SRGBColorSpace;
