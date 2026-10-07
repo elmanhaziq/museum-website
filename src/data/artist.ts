@@ -15,11 +15,7 @@ export interface Artwork {
 }
 
 export const ARTIST = {
-  name: 'Artist Name',
-  bio: 'An emerging artist exploring memory, place, and the quiet poetry of everyday objects.',
-  education: 'Fine Art · 2022—2026',
-  interests: 'Painting, printmaking, collected places, and the slow observation of ordinary life.',
-  exhibitions: 'Selected studio works · 2022—2026',
-  email: 'hello@example.com',
-  social: '@artistname',
+  name: 'Kasih Arissa',
+  role: 'Artist / Illustrator',
+  bio: 'A personal collection moving between painting, drawing, character illustration, graphic design, and mixed-media objects.',
 } as const;

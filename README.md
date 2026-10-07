@@ -1,22 +1,32 @@
-# Interactive Art Museum
+# Kasih Arissa — Interactive Art Museum
 
-A walkable gallery portfolio built with Next.js, TypeScript, React Three Fiber, Three.js, GSAP, and Tailwind CSS.
+A guided virtual exhibition for Kasih Arissa, built with Next.js, TypeScript, React Three Fiber, Three.js, and GSAP.
 
 ## Run locally
+
+Requirements: Node.js and pnpm.
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Open http://localhost:3000, enter the gallery, and use WASD to move. Drag to look around. Approach a framed work and choose **View artwork**, or open **Index** to select a piece. Escape returns from an artwork presentation or pauses movement.
+Open [http://localhost:3000](http://localhost:3000). Choose **Start Guided Tour**, **Explore Exhibition**, or **Index**. Inside the gallery, use **Previous** and **Next** (or the left and right arrow keys), open an artwork for its detail view, and return to the same tour stop. The gallery also works with touch controls on mobile.
+
+To create a production build and run it locally:
+
+```bash
+pnpm build
+pnpm start
+```
 
 ## Project structure
 
-- `src/data/artworks.ts` contains artwork metadata, paths, and gallery positions.
-- `src/data/artist.ts` contains the artist profile.
-- `public/artworks/` contains the original vector studies and optimized PNGs used in the gallery.
-- `src/components/gallery/` contains the museum, lighting, movement, camera bridge, and proximity detection.
-- `src/components/artwork/` contains reusable frames, artwork surfaces, and presentation layouts.
+- `src/data/artworks.ts` holds the artwork metadata, image paths, and exhibition positions.
+- `src/data/artist.ts` holds the artist profile.
+- `src/components/gallery/` contains the museum scene, lighting, artwork placements, and guided tour camera.
+- `src/components/artwork/` contains artwork surfaces, frames, and detail presentation.
+- `src/components/ui/` contains the Index, About, and other interface panels.
+- `public/artworks/` contains the artwork images and related graphic assets.
 
-Replace the sample artwork, biography, education, contact, and social details in the data files before publishing. New works can be added by placing an image in `public/artworks/` and adding its metadata and position to `src/data/artworks.ts`.
+The museum artwork images are included in the archive. Dependencies and build output are not; install dependencies with `pnpm install` before running the project.
