@@ -17,7 +17,8 @@ function ArtworkSpotlight({ artwork, shadows }: { artwork: Artwork; shadows: boo
 }
 
 export default function GalleryLighting({ quality = 'high' }: { quality?: 'high'|'medium'|'low' }) {
-  const selected = quality === 'low' ? artworks.filter((_,index) => index % 5 === 0) : quality === 'medium' ? artworks.filter((_,index) => index % 2 === 0) : artworks;
+  // Lower tiers light a subset of wall works but always keep the sculpture lit.
+  const selected = quality === 'low' ? artworks.filter((item,index) => index % 5 === 0 || item.displayType === 'sculpture') : quality === 'medium' ? artworks.filter((item,index) => index % 2 === 0 || item.displayType === 'sculpture') : artworks;
   return <>
     <ambientLight intensity={0.34} color="#fff8ef" />
     <hemisphereLight args={['#fff8ee', '#8c7868', quality === 'low' ? 0.46 : 0.58]} />

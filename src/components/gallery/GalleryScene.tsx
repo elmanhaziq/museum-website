@@ -16,6 +16,8 @@ import AboutArtist from '@/components/ui/AboutArtist';
 import ArtworkIndex from '@/components/ui/ArtworkIndex';
 import { ARTIST } from '@/data/artist';
 import { ArrowIcon, CloseIcon, MenuIcon } from '@/components/ui/Icon';
+import { GALLERY } from '@/lib/constants';
+import { ROOM_DIVIDERS } from '@/lib/gallery-layout';
 
 const sectionNames: Record<string, string> = {
   'main-gallery': 'THE EXHIBITION', 'nature-gallery': 'NATURE & LANDSCAPE',
@@ -26,13 +28,10 @@ const sectionOrder = ['main-gallery', 'nature-gallery', 'portrait-gallery', 'ill
 
 function sectionRank(room: string) { const rank = sectionOrder.indexOf(room); return rank < 0 ? sectionOrder.length : rank; }
 
-// Distance and vertical shift that keep a wall work fully visible inside the part of the
-// viewport not covered by the header and tour panel, for any screen aspect ratio.
-function frameWallArtwork(camera: Camera, artwork: Artwork) {
+// Distance and vertical shift that keep a work of the given size fully visible inside the
+// part of the viewport not covered by the header and tour panel, for any screen aspect ratio.
+function frameWork(camera: Camera, width: number, height: number, minDistance = 3.55, maxDistance = 8) {
   const perspective = camera as PerspectiveCamera;
-  const aspect = artwork.imageAspectRatio ?? 0.75;
-  const height = artwork.size?.[1] ?? Math.min(1.62, 1.95 / aspect);
-  const width = artwork.size?.[0] ?? height * aspect;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const short = vh < 520;
@@ -45,11 +44,47 @@ function frameWallArtwork(camera: Camera, artwork: Artwork) {
   const usableH = short ? 0.62 : narrow ? 0.86 : 0.8;
   const tanV = Math.tan(MathUtils.degToRad(perspective.fov ?? 62) / 2);
   const tanH = tanV * (perspective.aspect ?? vw / vh);
-  const fitV = (height + 0.45) / (2 * tanV * usableV);
+  const fitV = height / (2 * tanV * usableV);
   const fitH = width / (2 * tanH * usableH);
-  const distance = MathUtils.clamp(Math.max(fitV, fitH), 3.55, 8);
+  const distance = MathUtils.clamp(Math.max(fitV, fitH), minDistance, maxDistance);
   return { distance, lift: (bottom - top) * distance * tanV };
 }
+
+// Camera route between two points that passes through doorways instead of through the
+// partition walls between rooms.
+const DOOR_CENTERS = GALLERY.openings.map(([left, right]) => (left + right) / 2);
+function cameraRoute(from: Vector3, to: Vector3) {
+  const points = [from.clone()];
+  let current = from.clone();
+  const direction = Math.sign(to.z - current.z);
+  const crossings = ROOM_DIVIDERS.filter((z) => (z - current.z) * direction > 0 && (to.z - z) * direction > 0)
+    .sort((a, b) => (a - b) * direction);
+  for (const z of crossings) {
+    const t = (z - current.z) / (to.z - current.z);
+    const x = current.x + t * (to.x - current.x);
+    const clear = GALLERY.openings.some(([left, right]) => x > left + 0.7 && x < right - 0.7);
+    if (clear) continue;
+    const door = DOOR_CENTERS.reduce((best, cx) => Math.abs(cx - x) < Math.abs(best - x) ? cx : best);
+    const y = MathUtils.lerp(current.y, to.y, t);
+    points.push(new Vector3(door, y, z - 0.7 * direction), new Vector3(door, y, z + 0.7 * direction));
+    current = points[points.length - 1].clone();
+  }
+  points.push(to.clone());
+  const lengths = points.slice(1).map((point, i) => point.distanceTo(points[i]));
+  const total = lengths.reduce((sum, length) => sum + length, 0);
+  const sample = (progress: number, out: Vector3) => {
+    let remaining = progress * total;
+    for (let i = 0; i < lengths.length; i++) {
+      if (remaining <= lengths[i] || i === lengths.length - 1) return out.lerpVectors(points[i], points[i + 1], lengths[i] ? Math.min(1, remaining / lengths[i]) : 1);
+      remaining -= lengths[i];
+    }
+    return out.copy(to);
+  };
+  return { total, sample };
+}
+
+// Overall size of the sculpture display (plinth + work) used for camera framing.
+const SCULPTURE_FRAME = { width: 1.8, height: 2.6, centerY: 1.28, maxDistance: 3.5 };
 
 export default function GalleryScene() {
   const [ready, setReady] = useState(false);
@@ -88,56 +123,58 @@ export default function GalleryScene() {
   }, []);
 
   const attachCamera = useCallback((camera: Camera | null) => { cameraRef.current = camera; }, []);
+  const flyCamera = useCallback((destination: Vector3, target: Vector3, duration: (length: number) => number, onComplete?: () => void) => {
+    const camera = cameraRef.current;
+    if (!camera) return;
+    activeTween.current?.kill();
+    const fromPosition = camera.position.clone();
+    const fromQuaternion = camera.quaternion.clone();
+    camera.position.copy(destination); camera.lookAt(target);
+    const targetQuaternion = camera.quaternion.clone();
+    camera.position.copy(fromPosition); camera.quaternion.copy(fromQuaternion);
+    const route = cameraRoute(fromPosition, destination);
+    const progress = {value:0};
+    activeTween.current = gsap.to(progress, {
+      value:1, duration: reducedMotion ? 0.15 : duration(route.total), ease:'power2.inOut',
+      onUpdate:() => { route.sample(progress.value, camera.position); camera.quaternion.slerpQuaternions(fromQuaternion,targetQuaternion,progress.value); },
+      onComplete:() => { camera.position.copy(destination); camera.lookAt(target); onComplete?.(); },
+    });
+  }, [reducedMotion]);
+
   const moveToStop = useCallback((index: number, quick = false) => {
     const camera = cameraRef.current;
     const artwork = stops[index];
     if (!camera || !artwork) return;
-    activeTween.current?.kill();
     const normal = new Vector3(0, 0, 1).applyEuler(new Euler(...artwork.rotation)).normalize();
     const target = new Vector3(...artwork.position);
-    let destination: Vector3;
-    if (artwork.displayType === 'sculpture') {
-      destination = new Vector3(0, 1.85, -40.3);
-      target.y = 2.55;
+    const sculpture = artwork.displayType === 'sculpture';
+    let width: number; let height: number; let centerY: number;
+    if (sculpture) {
+      ({ width, height, centerY } = SCULPTURE_FRAME);
     } else {
-      const { distance, lift } = frameWallArtwork(camera, artwork);
-      destination = target.clone().addScaledVector(normal, distance);
-      const eyeY = Math.max(1.15, artwork.position[1] + 0.12 - lift);
-      target.y = eyeY - 0.12;
-      destination.y = eyeY;
+      const aspect = artwork.imageAspectRatio ?? 0.75;
+      height = artwork.size?.[1] ?? Math.min(1.62, 1.95 / aspect);
+      width = artwork.size?.[0] ?? height * aspect;
+      centerY = artwork.position[1];
+      height += 0.45; // leave room for the wall label below the frame
     }
-    const fromPosition = camera.position.clone();
-    const fromQuaternion = camera.quaternion.clone();
-    const targetQuaternion = camera.quaternion.clone();
-    camera.position.copy(destination); camera.lookAt(target); targetQuaternion.copy(camera.quaternion);
-    camera.position.copy(fromPosition); camera.quaternion.copy(fromQuaternion);
-    const distance = fromPosition.distanceTo(destination);
-    const progress = {value:0};
+    const { distance, lift } = frameWork(camera, width, height, sculpture ? 2.6 : 3.55, sculpture ? SCULPTURE_FRAME.maxDistance : 8);
+    const destination = target.clone().addScaledVector(normal, distance);
+    const eyeY = Math.max(1.15, centerY + 0.12 - lift);
+    target.y = eyeY - 0.12;
+    destination.y = eyeY;
     setCurrentIndex(index);
-    activeTween.current = gsap.to(progress, {
-      value:1, duration: reducedMotion ? 0.15 : quick ? 0.45 : Math.min(3, Math.max(1.5, distance * 0.24)), ease:'power2.inOut',
-      onUpdate:() => { camera.position.lerpVectors(fromPosition,destination,progress.value); camera.quaternion.slerpQuaternions(fromQuaternion,targetQuaternion,progress.value); },
-      onComplete:() => { camera.position.copy(destination); camera.lookAt(target); },
-    });
-  }, [reducedMotion, stops]);
+    flyCamera(destination, target, (length) => quick ? 0.45 : Math.min(3.4, Math.max(1.5, length * 0.24)));
+  }, [flyCamera, stops]);
 
   const startExhibition = useCallback((mode: 'guided'|'explore') => {
     setTourMode(mode); setIntroOpen(false); moveToStop(0);
   }, [moveToStop]);
 
   const returnToEntrance = useCallback(() => {
-    const camera = cameraRef.current;
-    if (!camera) { setCurrentIndex(-1); setIntroOpen(true); return; }
-    activeTween.current?.kill();
-    const fromPosition = camera.position.clone();
-    const fromQuaternion = camera.quaternion.clone();
-    const destination = new Vector3(0,1.65,8.2);
-    const target = new Vector3(0,2.8,.8);
-    camera.position.copy(destination); camera.lookAt(target); const targetQuaternion = camera.quaternion.clone();
-    camera.position.copy(fromPosition); camera.quaternion.copy(fromQuaternion);
-    const progress={value:0};
-    activeTween.current=gsap.to(progress,{value:1,duration:reducedMotion ? .15 : 2,ease:'power2.inOut',onUpdate:()=>{camera.position.lerpVectors(fromPosition,destination,progress.value);camera.quaternion.slerpQuaternions(fromQuaternion,targetQuaternion,progress.value);},onComplete:()=>{setCurrentIndex(-1);setIntroOpen(true);}});
-  },[reducedMotion]);
+    if (!cameraRef.current) { setCurrentIndex(-1); setIntroOpen(true); return; }
+    flyCamera(new Vector3(0,1.65,8.2), new Vector3(0,2.8,.8), (length) => Math.min(4, Math.max(2, length * 0.12)), () => { setCurrentIndex(-1); setIntroOpen(true); });
+  },[flyCamera]);
 
   useEffect(() => {
     const mode = new URLSearchParams(window.location.search).get('mode');

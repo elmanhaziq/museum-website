@@ -6,6 +6,7 @@ import { Artwork as ArtworkData } from '@/data/artworks';
 import Artwork from '@/components/artwork/Artwork';
 import ArtworkFrame from '@/components/artwork/ArtworkFrame';
 import ArtworkErrorBoundary from '@/components/artwork/ArtworkErrorBoundary';
+import FishSculpture from '@/components/artwork/FishSculpture';
 import { ARTIST } from '@/data/artist';
 import { placeArtworkLabel } from '@/lib/gallery-layout';
 
@@ -39,33 +40,13 @@ function MuseumLabel({ artwork }: { artwork: ArtworkData }) {
 
 export default function ArtworkCollection({ items, onSelect }: { items: ArtworkData[]; onSelect: (id: string) => void }) {
   return <group>{items.map((artwork) => {
-    if (artwork.displayType === 'sculpture') return <group key={artwork.id} position={[artwork.position[0], 0, artwork.position[2]]} onPointerDown={(event) => { event.stopPropagation(); onSelect(artwork.id); }}>
-      <mesh position={[0, 0.12, 0]} receiveShadow><cylinderGeometry args={[1.18, 1.18, 0.14, 64]} /><meshStandardMaterial color="#f47f9b" roughness={0.78} /></mesh>
-      <mesh position={[0, 0.58, 0]} castShadow receiveShadow><cylinderGeometry args={[0.68, 0.78, 0.82, 32]} /><meshStandardMaterial color="#fff8e8" roughness={0.72} /></mesh>
-      <mesh position={[0, 1.01, 0]} castShadow><cylinderGeometry args={[0.83, 0.83, 0.07, 48]} /><meshStandardMaterial color="#f8a8ba" roughness={0.76} /></mesh>
-      <group position={[0, 0, 0]}>
-      <mesh position={[0, 2.13, 0]} scale={[0.72, 0.84, 0.5]} castShadow><sphereGeometry args={[1, 32, 24]} /><meshStandardMaterial color="#dedbd1" roughness={0.68} /></mesh>
-        {Array.from({length: 6}, (_, row) => Array.from({length: 7}, (_, col) => {
-          const y = 1.63 + row * 0.19;
-          const x = (col - 3) * 0.17 + (row % 2 ? 0.06 : 0);
-          const nx = x / 0.72; const ny = (y - 2.13) / 0.84;
-          const z = 0.5 * Math.sqrt(Math.max(0.08, 1 - nx * nx - ny * ny)) + 0.025;
-          const colors = ['#db5976','#ed6f86','#e99536','#e7c14a','#3e947a','#36a5a2','#d94f72'];
-          const color = row >= 4 ? ['#b7b5aa','#d5d1c6','#94938b'][col % 3] : colors[(row * 2 + col) % colors.length];
-          return <mesh key={`${row}-${col}`} position={[x,y,z]} scale={[0.082,0.108,0.032]} rotation={[0,0,(col-3)*0.035]} castShadow><sphereGeometry args={[1, 20, 14]} /><meshStandardMaterial color={color} roughness={row >= 4 ? 0.52 : 0.48} metalness={row >= 4 ? 0.34 : 0.08} /></mesh>;
-        }))}
-        <mesh position={[-0.7,2.08,-0.06]} rotation={[0,0,-0.28]} scale={[0.34,0.28,0.06]} castShadow><coneGeometry args={[1,1,3]} /><meshStandardMaterial color="#f4d04b" roughness={0.6} /></mesh>
-        <mesh position={[0.7,2.08,-0.06]} rotation={[0,0,0.28]} scale={[0.34,0.28,0.06]} castShadow><coneGeometry args={[1,1,3]} /><meshStandardMaterial color="#f4d04b" roughness={0.6} /></mesh>
-        <mesh position={[0.06,2.4,0.38]} castShadow><sphereGeometry args={[0.09,16,12]} /><meshStandardMaterial color="#242522" roughness={0.3} /></mesh>
-        <mesh position={[0.09,2.43,0.455]}><sphereGeometry args={[0.027,10,8]} /><meshBasicMaterial color="#fff8e8" /></mesh>
-        <mesh position={[0,1.3,0]} rotation={[Math.PI/2,0,0]}><coneGeometry args={[0.18,0.3,3]} /><meshStandardMaterial color="#ed6a7e" roughness={0.55} /></mesh>
-      </group>
-      {artwork.showLabel && <group>
-        <mesh position={[0,.62,.91]} castShadow><boxGeometry args={[1.58,.34,.05]}/><meshStandardMaterial color="#fff8e8" roughness={.8}/></mesh>
-        {[-.62,.62].map((x)=><mesh key={x} position={[x,.405,.91]} castShadow><boxGeometry args={[.055,.43,.065]}/><meshStandardMaterial color="#f0e4cf" roughness={.82}/></mesh>)}
-        <group position={[0,.62,.938]}><MuseumLabel artwork={artwork}/></group>
-      </group>}
-      <mesh position={[0,2.05,0]}><sphereGeometry args={[1.02,16,12]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
+    if (artwork.displayType === 'sculpture') return <group key={artwork.id} position={[artwork.position[0], 0, artwork.position[2]]} rotation={artwork.rotation} onPointerDown={(event) => { event.stopPropagation(); onSelect(artwork.id); }}>
+      {/* Gallery plinth with the wall-label text set into its front face */}
+      <mesh position={[0, 0.35, 0]} castShadow receiveShadow><boxGeometry args={[1.7, 0.7, 1.1]} /><meshStandardMaterial color="#f6efe2" roughness={0.86} /></mesh>
+      <mesh position={[0, 0.015, 0]}><boxGeometry args={[1.74, 0.03, 1.14]} /><meshStandardMaterial color="#d9cdb8" roughness={0.9} /></mesh>
+      {artwork.showLabel !== false && <group position={[0, 0.4, 0.552]} scale={0.95}><MuseumLabel artwork={artwork} /></group>}
+      <group position={[0, 0.7, 0]}><FishSculpture /></group>
+      <mesh position={[0, 1.6, 0]}><sphereGeometry args={[1.05, 12, 10]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
     </group>;
     const aspect = artwork.imageAspectRatio ?? 0.75;
     const height = artwork.size?.[1] ?? Math.min(1.62, 1.95 / aspect);
