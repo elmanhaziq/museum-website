@@ -31,15 +31,11 @@ export function ArtworkImage({
   return (
     <div className={`artwork-image ${className}`}>
       <img
-         src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}${artwork.image}`}
-         alt={artwork.alt}
+        src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}${artwork.image}`}
+        alt={artwork.alt}
+        decoding="async"
         onError={() => setFailed(true)}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'contain',
-  }}
-
+        style={artwork.imageAspectRatio ? { aspectRatio: String(artwork.imageAspectRatio) } : undefined}
       />
     </div>
   );
@@ -64,7 +60,7 @@ export function ArtworkMetadata({ artwork }: { artwork: Artwork }) {
       )}
       <div>
         <dt>Gallery</dt>
-        <dd>{artwork.room.replaceAll('-', ' ')}</dd>
+        <dd className="is-capitalized">{artwork.room.replaceAll('-', ' ')}</dd>
       </div>
     </dl>
   );
