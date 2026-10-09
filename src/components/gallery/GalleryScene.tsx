@@ -2,6 +2,7 @@
 
 import { Canvas } from '@react-three/fiber';
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useProgress } from '@react-three/drei';
 import type { Camera, PerspectiveCamera } from 'three';
 import { ACESFilmicToneMapping, Euler, MathUtils, PCFSoftShadowMap, SRGBColorSpace, Vector3 } from 'three';
 import { gsap } from 'gsap';
@@ -83,6 +84,11 @@ function cameraRoute(from: Vector3, to: Vector3) {
   return { total, sample };
 }
 
+// Establishing shot: a level, one-point-perspective view from the entrance, composed like
+// an architectural photograph of the first room.
+const ESTABLISHING_POSITION: [number, number, number] = [0, 1.6, 10.4];
+const PHOTO_HOLD_MS = 1300;
+
 // Overall size of the sculpture display (plinth + work) used for camera framing.
 const SCULPTURE_FRAME = { width: 1.8, height: 2.6, centerY: 1.28, maxDistance: 3.5 };
 
@@ -100,6 +106,9 @@ export default function GalleryScene() {
   const activeTween = useRef<gsap.core.Tween | null>(null);
   const indexScrollTop = useRef(0);
   const autoModeStarted = useRef(false);
+  // Opening sequence: 'loading' (cream cover) -> 'photo' (still frame) -> 'moving'.
+  const [phase, setPhase] = useState<'loading'|'photo'|'moving'>('loading');
+  const { active: texturesLoading } = useProgress();
   const [tourMode, setTourMode] = useState<'guided'|'explore'>('explore');
 
   const stops = useMemo(() => [...allArtworks].sort((a,b) => sectionRank(a.room)-sectionRank(b.room) || allArtworks.indexOf(a)-allArtworks.indexOf(b)), []);
@@ -173,13 +182,41 @@ export default function GalleryScene() {
 
   const returnToEntrance = useCallback(() => {
     if (!cameraRef.current) { setCurrentIndex(-1); setIntroOpen(true); return; }
-    flyCamera(new Vector3(0,1.65,8.2), new Vector3(0,2.8,.8), (length) => Math.min(4, Math.max(2, length * 0.12)), () => { setCurrentIndex(-1); setIntroOpen(true); });
+    const [x, y, z] = ESTABLISHING_POSITION;
+    flyCamera(new Vector3(x, y, z), new Vector3(x, y, z - 10), (length) => Math.min(4, Math.max(2, length * 0.12)), () => { setCurrentIndex(-1); setIntroOpen(true); });
   },[flyCamera]);
+
+  // Reveal the first frame once the scene and the nearby artwork textures are ready
+  // (or after a timeout on slow connections), hold it like a photograph, then move.
+  useEffect(() => {
+    if (!ready || phase !== 'loading') return;
+    const reveal = () => setPhase('photo');
+    if (!texturesLoading) { const t = window.setTimeout(reveal, 250); return () => window.clearTimeout(t); }
+    const fallback = window.setTimeout(reveal, 4000);
+    return () => window.clearTimeout(fallback);
+  }, [phase, ready, texturesLoading]);
+  useEffect(() => {
+    if (phase !== 'photo') return;
+    const t = window.setTimeout(() => setPhase('moving'), reducedMotion ? 0 : PHOTO_HOLD_MS);
+    return () => window.clearTimeout(t);
+  }, [phase, reducedMotion]);
 
   useEffect(() => {
     const mode = new URLSearchParams(window.location.search).get('mode');
-    if ((mode === 'tour' || mode === 'explore') && currentIndex < 0 && ready && !autoModeStarted.current) { autoModeStarted.current=true; moveToStop(0); }
-  }, [currentIndex, moveToStop, ready]);
+    if ((mode === 'tour' || mode === 'explore') && currentIndex < 0 && phase === 'moving' && !autoModeStarted.current) { autoModeStarted.current=true; moveToStop(0); }
+  }, [currentIndex, moveToStop, phase]);
+
+  // While the entrance overlay is open, the camera drifts slowly forward and back,
+  // like a slow dolly shot. Any tour movement kills this tween.
+  useEffect(() => {
+    const camera = cameraRef.current;
+    if (!camera || phase !== 'moving' || !introOpen || currentIndex >= 0 || reducedMotion) return;
+    const forward = new Vector3(); camera.getWorldDirection(forward); forward.y = 0; forward.normalize();
+    const to = camera.position.clone().addScaledVector(forward, 0.9).add(new Vector3(0.18, 0.04, 0));
+    activeTween.current?.kill();
+    activeTween.current = gsap.to(camera.position, { x: to.x, y: to.y, z: to.z, duration: 14, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+    return () => { activeTween.current?.kill(); };
+  }, [currentIndex, introOpen, phase, reducedMotion]);
 
   const openArtwork = useCallback((artwork: Artwork) => setSelected(artwork), []);
   const closeArtwork = useCallback(() => setSelected(null), []);
@@ -208,13 +245,14 @@ export default function GalleryScene() {
   const isLast = currentIndex === stops.length - 1;
   const openIndex = () => { setMenuOpen(false); indexScrollTop.current = 0; setIndexOpen(true); };
   const openAbout = () => { setMenuOpen(false); setAboutOpen(true); };
-  const startCamera = [0, 1.65, 8.2] as [number,number,number];
+  const startCamera = ESTABLISHING_POSITION;
   const shadows = quality === 'high';
   return <>
-    <Canvas shadows={shadows} dpr={quality === 'low' ? [1,1.15] : quality === 'medium' ? [1,1.35] : [1,1.5]} camera={{ position:startCamera, fov:quality === 'low' ? 66 : 62, near:.1, far:85 }} onCreated={({gl}) => { gl.setClearColor('#fff8e8'); gl.toneMapping = ACESFilmicToneMapping; gl.toneMappingExposure = 1.0; gl.outputColorSpace = SRGBColorSpace; gl.shadowMap.type = PCFSoftShadowMap; setReady(true); }}>
+    <Canvas shadows={shadows} dpr={quality === 'low' ? [1,1.15] : quality === 'medium' ? [1,1.35] : [1,1.5]} camera={{ position:startCamera, fov:quality === 'low' ? 66 : 62, near:.1, far:85 }} onCreated={({gl}) => { gl.setClearColor('#fff8e8'); gl.toneMapping = ACESFilmicToneMapping; gl.toneMappingExposure = 0.94; gl.outputColorSpace = SRGBColorSpace; gl.shadowMap.type = PCFSoftShadowMap; setReady(true); }}>
+      <fog attach="fog" args={['#eadccb', 24, 78]} />
       <Suspense fallback={null}><Museum/><GalleryLighting quality={quality}/><CameraBridge onCamera={attachCamera}/><ArtworkCollection items={allArtworks} onSelect={(id) => { const index = stops.findIndex((item) => item.id === id); if (index >= 0) moveToStop(index); }}/></Suspense>
     </Canvas>
-    {!ready && <div className="gallery-loading" role="status"><span>{ARTIST.name.toUpperCase()}</span><p>Preparing the exhibition…</p></div>}
+    <div className={`gallery-loading${phase === 'loading' ? '' : ' is-revealed'}`} role="status" aria-hidden={phase !== 'loading'}><span>{ARTIST.name.toUpperCase()}</span><p>Preparing the exhibition…</p></div>
     <header className="gallery-header">
       <Link href="/" className="gallery-home" aria-label="Kasih Arissa, return to exhibition entry">{ARTIST.name.toUpperCase()}</Link>
       <span className="gallery-section-name">{current ? sectionNames[current.room] : 'SELECTED WORKS'}</span>
@@ -240,7 +278,7 @@ export default function GalleryScene() {
       </div>
       {isLast && <><p className="tour-farewell">End of exhibition · Thank you for visiting.</p><div className="tour-end-actions"><button onClick={returnToEntrance} aria-label="Return to entrance"><span className="label-long">RETURN TO </span>ENTRANCE</button><button onClick={openIndex} aria-label="View all works"><span className="label-long">VIEW </span>ALL WORKS</button><button onClick={openAbout} aria-label="About the artist">ABOUT<span className="label-long"> THE ARTIST</span></button></div></>}
     </section>}
-    {introOpen && <section className="tour-intro" aria-labelledby="tour-intro-title"><p className="eyebrow">A DIGITAL EXHIBITION</p><h1 id="tour-intro-title">{ARTIST.name}</h1><p className="intro-subtitle">SELECTED WORKS</p><div className="intro-actions"><button onClick={() => startExhibition('guided')}><span>START GUIDED TOUR</span><ArrowIcon direction="up-right" /></button><button onClick={() => startExhibition('explore')}><span>EXPLORE EXHIBITION</span><ArrowIcon direction="up-right" /></button><button onClick={() => { setIntroOpen(false); setIndexOpen(true); }}><span>INDEX</span><ArrowIcon direction="up-right" /></button></div></section>}
+    {introOpen && phase === 'moving' && <section className="tour-intro" aria-labelledby="tour-intro-title"><p className="eyebrow">A DIGITAL EXHIBITION</p><h1 id="tour-intro-title">{ARTIST.name}</h1><p className="intro-subtitle">SELECTED WORKS</p><div className="intro-actions"><button onClick={() => startExhibition('guided')}><span>START GUIDED TOUR</span><ArrowIcon direction="up-right" /></button><button onClick={() => startExhibition('explore')}><span>EXPLORE EXHIBITION</span><ArrowIcon direction="up-right" /></button><button onClick={() => { setIntroOpen(false); setIndexOpen(true); }}><span>INDEX</span><ArrowIcon direction="up-right" /></button></div></section>}
     {selected && <ArtworkDetail artwork={selected} onReturn={closeArtwork}/>}
     {indexOpen && <ArtworkIndex items={allArtworks} initialScrollTop={indexScrollTop.current} onScrollPosition={(top) => { indexScrollTop.current=top; }} onClose={() => setIndexOpen(false)} onSelect={(id) => { const index=stops.findIndex((item)=>item.id===id); setIndexOpen(false); if(index>=0) moveToStop(index); }}/ >}
     {aboutOpen && <AboutArtist onClose={() => setAboutOpen(false)}/>}

@@ -47,13 +47,18 @@ function ProceduralMuseum() {
 
   return <group>
     {/* Natural oak boards with a matte finish; walls meet the floor at y=0. */}
-    <mesh position={[0,-.12,centerZ]} receiveShadow><boxGeometry args={[width,.24,depth]}/><meshStandardMaterial map={floorTexture??undefined} roughness={.78} metalness={0}/></mesh>
+    <mesh position={[0,-.12,centerZ]} receiveShadow><boxGeometry args={[width,.24,depth]}/><meshStandardMaterial map={floorTexture??undefined} roughness={.52} metalness={0} envMapIntensity={.45}/></mesh>
     <mesh position={[0,height,centerZ]}><boxGeometry args={[width,.18,depth]}/><meshStandardMaterial color="#fff8e8" roughness={.96}/></mesh>
     <mesh position={[0,height/2,front]} castShadow receiveShadow><boxGeometry args={[width,height,wallThickness]}/><meshStandardMaterial color="#f5b4c4" roughness={.88}/></mesh>
     <mesh position={[0,height/2,back]} castShadow receiveShadow><boxGeometry args={[width,height,wallThickness]}/><meshStandardMaterial color="#fff8e8" roughness={.88}/></mesh>
     {MUSEUM_WALLS.map((wall)=><mesh key={wall.id} position={wall.position} rotation={wall.rotation} castShadow receiveShadow>
       <boxGeometry args={[wall.width,wall.height,wall.depth]}/><meshStandardMaterial color={wall.color} roughness={.88}/>
     </mesh>)}
+    {/* Painted skirting boards where walls meet the floor */}
+    {MUSEUM_WALLS.map((wall)=><mesh key={`skirting-${wall.id}`} position={[wall.position[0],.055,wall.position[2]]} rotation={wall.rotation} receiveShadow>
+      <boxGeometry args={[wall.width,.11,wall.depth+.03]}/><meshStandardMaterial color="#f2eadb" roughness={.6}/>
+    </mesh>)}
+    {[front,back].map((z)=><mesh key={`skirting-${z}`} position={[0,.055,z]} receiveShadow><boxGeometry args={[width,.11,wallThickness+.03]}/><meshStandardMaterial color="#f2eadb" roughness={.6}/></mesh>)}
     {/* Ceiling track rails */}
     {[-8,-2.7,2.7,8].map((x)=><Box key={`rail-${x}`} position={[x,height-.17,centerZ]} size={[.045,.06,depth-1.2]} color="#786e62"/>)}
     {[-38,-28,-18,-7,5].map((z)=><Box key={`cross-rail-${z}`} position={[0,height-.17,z]} size={[width-1.3,.055,.045]} color="#786e62"/>)}
