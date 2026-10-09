@@ -33,3 +33,12 @@ export function MenuIcon({ className = '' }: { className?: string }) {
     </svg>
   );
 }
+
+// Hand-drawn wave: the site's signature mark beneath major headings.
+export function Squiggle({ className = '' }: { className?: string }) {
+  return (
+    <svg className={`squiggle ${className}`} viewBox="0 0 72 10" aria-hidden="true" focusable="false">
+      <path d="M2 5c5-4 9-4 14 0s9 4 14 0 9-4 14 0 9 4 14 0 9-4 12-1" />
+    </svg>
+  );
+}

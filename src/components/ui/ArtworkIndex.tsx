@@ -14,7 +14,7 @@ export default function ArtworkIndex({ items, onSelect, onClose, initialScrollTo
     <header><span>EXHIBITION INDEX</span><button ref={closeRef} className="close-button" onClick={onClose} aria-label="Close exhibition index"><span>CLOSE</span><CloseIcon /></button></header>
     <div className="index-scroll" ref={scrollRef} onScroll={(event) => onScrollPosition(event.currentTarget.scrollTop)}>
     <div className="index-content"><p className="eyebrow">MAIN GALLERY / SELECTED WORKS</p><h1 id="works-title">The collection</h1>
-      <ol>{items.map((item, index) => <li key={item.id}><button onClick={() => onSelect(item.id)}><span className="index-number">{String(index + 1).padStart(2, '0')}</span><span className="index-title">{item.title}<span className="index-medium">{item.medium}</span></span><span className="index-year">{item.year}</span><ArrowIcon className="index-arrow" /></button></li>)}</ol>
+      <ol>{items.map((item, index) => <li key={item.id}><button onClick={() => onSelect(item.id)}><span className="index-number">{String(index + 1).padStart(2, '0')}</span><span className="index-thumb"><img src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}${item.image.replace('/artworks/', '/artworks/thumbs/')}`} alt="" loading="lazy" decoding="async" width={64} height={64} /></span><span className="index-title">{item.title}<span className="index-medium">{item.medium}</span></span><span className="index-year">{item.year}</span><ArrowIcon className="index-arrow" /></button></li>)}</ol>
       <p className="index-note">Approach a work in the gallery or choose a title here.</p>
     </div>
     </div>

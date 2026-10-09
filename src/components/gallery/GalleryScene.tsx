@@ -211,7 +211,7 @@ export default function GalleryScene() {
   const startCamera = [0, 1.65, 8.2] as [number,number,number];
   const shadows = quality === 'high';
   return <>
-    <Canvas shadows={shadows} dpr={quality === 'low' ? [1,1.15] : quality === 'medium' ? [1,1.35] : [1,1.5]} camera={{ position:startCamera, fov:quality === 'low' ? 66 : 62, near:.1, far:85 }} onCreated={({gl}) => { gl.setClearColor('#fff8ee'); gl.toneMapping = ACESFilmicToneMapping; gl.toneMappingExposure = 1.0; gl.outputColorSpace = SRGBColorSpace; gl.shadowMap.type = PCFSoftShadowMap; setReady(true); }}>
+    <Canvas shadows={shadows} dpr={quality === 'low' ? [1,1.15] : quality === 'medium' ? [1,1.35] : [1,1.5]} camera={{ position:startCamera, fov:quality === 'low' ? 66 : 62, near:.1, far:85 }} onCreated={({gl}) => { gl.setClearColor('#fff8e8'); gl.toneMapping = ACESFilmicToneMapping; gl.toneMappingExposure = 1.0; gl.outputColorSpace = SRGBColorSpace; gl.shadowMap.type = PCFSoftShadowMap; setReady(true); }}>
       <Suspense fallback={null}><Museum/><GalleryLighting quality={quality}/><CameraBridge onCamera={attachCamera}/><ArtworkCollection items={allArtworks} onSelect={(id) => { const index = stops.findIndex((item) => item.id === id); if (index >= 0) moveToStop(index); }}/></Suspense>
     </Canvas>
     {!ready && <div className="gallery-loading" role="status"><span>{ARTIST.name.toUpperCase()}</span><p>Preparing the exhibition…</p></div>}
@@ -238,7 +238,7 @@ export default function GalleryScene() {
           ? <span className="tour-step tour-next tour-end-label">END</span>
           : <button className="tour-step tour-next" onClick={() => moveToStop(currentIndex+1)} aria-label={tourMode==='guided' ? 'Continue to next artwork' : 'Next artwork'}><span>{tourMode==='guided' ? 'CONTINUE' : 'NEXT'}</span><ArrowIcon direction="right" /></button>}
       </div>
-      {isLast && <><p className="tour-farewell">End of exhibition · Thank you for visiting.</p><div className="tour-end-actions"><button onClick={returnToEntrance}>RETURN TO ENTRANCE</button><button onClick={openIndex}>VIEW ALL WORKS</button><button onClick={openAbout}>ABOUT THE ARTIST</button></div></>}
+      {isLast && <><p className="tour-farewell">End of exhibition · Thank you for visiting.</p><div className="tour-end-actions"><button onClick={returnToEntrance} aria-label="Return to entrance"><span className="label-long">RETURN TO </span>ENTRANCE</button><button onClick={openIndex} aria-label="View all works"><span className="label-long">VIEW </span>ALL WORKS</button><button onClick={openAbout} aria-label="About the artist">ABOUT<span className="label-long"> THE ARTIST</span></button></div></>}
     </section>}
     {introOpen && <section className="tour-intro" aria-labelledby="tour-intro-title"><p className="eyebrow">A DIGITAL EXHIBITION</p><h1 id="tour-intro-title">{ARTIST.name}</h1><p className="intro-subtitle">SELECTED WORKS</p><div className="intro-actions"><button onClick={() => startExhibition('guided')}><span>START GUIDED TOUR</span><ArrowIcon direction="up-right" /></button><button onClick={() => startExhibition('explore')}><span>EXPLORE EXHIBITION</span><ArrowIcon direction="up-right" /></button><button onClick={() => { setIntroOpen(false); setIndexOpen(true); }}><span>INDEX</span><ArrowIcon direction="up-right" /></button></div></section>}
     {selected && <ArtworkDetail artwork={selected} onReturn={closeArtwork}/>}
